@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tusmo color palette */
+  --color-tusmo-bg: #1a4a5e;
+  --color-tusmo-bg-dark: #143d4e;
+  --color-tusmo-correct: #dc4a4a;   /* Red - correct position */
+  --color-tusmo-present: #d4a017;   /* Yellow - wrong position */
+  --color-tusmo-hint: #3a7ca5;      /* Blue - pre-filled hints */
+  --color-tusmo-absent: #6b7280;    /* Gray - letter not in word (for keyboard) */
+  --color-tusmo-empty: #f5f0e1;
+  --color-tusmo-key: #5a8fa8;
+  --color-tusmo-key-hover: #4a7f98;
+
+  /* Logo colors */
+  --color-logo-red: #dc4a4a;
+  --color-logo-yellow: #d4a017;
+
+  /* Custom animations */
+  --animate-cell-pulse: cell-pulse 1.5s ease-in-out infinite;
+  --animate-neon-glow: neon-glow 2s ease-in-out infinite;
+}
+
+@keyframes neon-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(255, 255, 255, 0.4),
+      0 0 20px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(255, 255, 255, 0.7),
+      0 0 40px rgba(255, 255, 255, 0.4),
+      0 0 60px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes cell-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.9);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--color-tusmo-bg);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
