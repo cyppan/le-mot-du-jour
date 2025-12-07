@@ -20,7 +20,7 @@ export function LetterCell({ letter, status, isCurrentCell = false, isMini = fal
   return (
     <div
       className={`
-        ${isMini ? 'w-6 h-6 text-xs' : 'w-11 h-11 text-lg md:w-12 md:h-12 md:text-xl'}
+        ${isMini ? 'w-6 h-6 text-xs' : 'w-[min(11vw,2.75rem)] h-[min(11vw,2.75rem)] text-[min(4vw,1.125rem)] sm:w-11 sm:h-11 sm:text-lg md:w-12 md:h-12 md:text-xl'}
         ${statusClasses[status]}
         flex items-center justify-center
         font-bold uppercase

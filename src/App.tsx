@@ -11,7 +11,7 @@ import { MAX_ATTEMPTS } from './utils/constants';
 import type { Round, Attempt, Letter } from './types/game';
 
 function App() {
-  const { state, addLetter, removeLetter, submitGuess, clearError } = useGameState();
+  const { state, addLetter, removeLetter, submitGuess, clearError, startFreeMode } = useGameState();
 
   // Handle physical keyboard input
   useKeyboardInput({
@@ -28,19 +28,15 @@ function App() {
 
     for (let i = 0; i < state.wordLength; i++) {
       if (i < state.currentAttempt.length) {
-        // Use the typed letter with appropriate status
+        // User has typed at this position - show their letter
         const char = state.currentAttempt[i];
-        const hintStatus = hints[i].status;
-        // If this position is a hint (or revealed), keep that status
-        if (hintStatus === 'revealed' || hintStatus === 'hint') {
-          letters.push({ char, status: hintStatus });
-        } else {
-          letters.push({ char, status: 'empty' });
-        }
+        // First letter gets 'revealed' status, others get 'empty'
+        const status = i === 0 ? 'revealed' : 'empty';
+        letters.push({ char, status });
       } else {
-        // Empty position - but show hint if available
+        // Empty position - show hint if available (as regular input, not blue)
         if (hints[i].char) {
-          letters.push({ char: hints[i].char, status: hints[i].status });
+          letters.push({ char: hints[i].char, status: 'empty' });
         } else {
           letters.push({ char: '', status: 'empty' });
         }
@@ -71,20 +67,9 @@ function App() {
     };
   };
 
-  // Calculate current column (first editable position after hints)
+  // Calculate current column position
   const getCurrentCol = (): number => {
-    const hints = generateHintsRow(state.targetWord, state.attempts);
-    let col = state.currentAttempt.length;
-
-    // Skip over hint positions to find the first editable position
-    while (
-      col < state.wordLength &&
-      (hints[col].status === 'hint' || hints[col].status === 'revealed')
-    ) {
-      col++;
-    }
-
-    return col;
+    return state.currentAttempt.length;
   };
 
   const round = buildRound();
@@ -93,7 +78,7 @@ function App() {
     <div className="min-h-screen bg-tusmo-bg flex flex-col">
       <Header />
 
-      <main className="flex-1 flex flex-col items-center justify-start px-4 py-4 gap-8">
+      <main className="flex-1 flex flex-col items-center justify-start px-2 sm:px-4 py-2 sm:py-4 gap-4 sm:gap-6 md:gap-8">
         <GameBoard
           round={round}
           currentRow={state.currentRow}
@@ -120,6 +105,8 @@ function App() {
           isWon={state.isWon}
           word={state.targetWord}
           attemptCount={state.attempts.length}
+          mode={state.mode}
+          onStartFreeMode={startFreeMode}
         />
       )}
     </div>

@@ -25,7 +25,7 @@ export function KeyboardKey({
   isWide = false,
   isIcon = false,
 }: KeyboardKeyProps) {
-  const widthClass = isWide ? 'w-14 md:w-16' : 'w-9 md:w-10';
+  const widthClass = isWide ? 'w-[min(14vw,3.5rem)] sm:w-14 md:w-16' : 'w-[min(8.5vw,2.25rem)] sm:w-9 md:w-10';
   const statusClass = statusClasses[status || 'default'];
 
   return (
@@ -34,7 +34,7 @@ export function KeyboardKey({
       className={`
         ${widthClass}
         ${statusClass}
-        h-12 md:h-14
+        h-[min(12vw,3rem)] sm:h-12 md:h-14
         rounded-md
         font-bold text-sm md:text-base
         uppercase

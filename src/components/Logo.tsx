@@ -18,7 +18,7 @@ export function Logo() {
   return (
     <h1
       ref={titleRef}
-      className="text-4xl md:text-4xl lg:text-5xl font-bold tracking-wider"
+      className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-wider"
       style={{
         color: '#1a4a5e',
       }}

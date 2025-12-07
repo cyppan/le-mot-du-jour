@@ -17,12 +17,12 @@ export function Keyboard({
 }: KeyboardProps) {
   return (
     <div
-      className="flex flex-col items-center gap-1.5"
+      className="flex flex-col items-center gap-1 sm:gap-1.5"
       role="group"
       aria-label="Clavier virtuel"
     >
       {AZERTY_LAYOUT.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex gap-1.5">
+        <div key={rowIndex} className="flex gap-1 sm:gap-1.5">
           {/* Add backspace on the last row at the start */}
           {rowIndex === 2 && (
             <KeyboardKey

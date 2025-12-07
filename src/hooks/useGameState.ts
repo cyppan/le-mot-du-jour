@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useCallback, useRef } from 'react';
 import type { Attempt, LetterStatus } from '../types/game';
-import { getDailyWord, getDailyWordNumber } from '../utils/wordList';
+import { getDailyWord, getDailyWordNumber, getRandomWord } from '../utils/wordList';
 import { MAX_ATTEMPTS } from '../utils/constants';
 import {
   evaluateGuess,
@@ -12,10 +12,17 @@ import {
 import {
   saveGameState,
   loadGameState,
+  saveFreeModeState,
+  loadFreeModeState,
+  clearFreeModeState,
   type PersistedState,
+  type FreeModePersistedState,
 } from '../utils/storage';
 
+export type GameMode = 'daily' | 'free';
+
 export interface GameState {
+  mode: GameMode;
   targetWord: string;
   wordLength: number;
   dayNumber: number;
@@ -33,22 +40,45 @@ type GameAction =
   | { type: 'REMOVE_LETTER' }
   | { type: 'SUBMIT_GUESS' }
   | { type: 'LOAD_STATE'; payload: PersistedState }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'START_FREE_MODE' };
 
 function createInitialState(): GameState {
-  const targetWord = getDailyWord();
+  const dailyWord = getDailyWord();
   const dayNumber = getDailyWordNumber();
 
-  // Try to load saved state synchronously
+  // Check for active (not complete) free mode game first
+  const freeModeSaved = loadFreeModeState();
+  if (freeModeSaved && !freeModeSaved.isComplete) {
+    return {
+      mode: 'free',
+      targetWord: freeModeSaved.targetWord,
+      wordLength: freeModeSaved.targetWord.length,
+      dayNumber,
+      currentAttempt: freeModeSaved.currentAttempt || freeModeSaved.targetWord[0],
+      currentRow: freeModeSaved.attempts.length,
+      attempts: freeModeSaved.attempts,
+      keyStates: freeModeSaved.keyStates,
+      isComplete: freeModeSaved.isComplete,
+      isWon: freeModeSaved.isWon,
+      errorMessage: null,
+    };
+  }
+
+  // Clear any completed free mode state
+  if (freeModeSaved && freeModeSaved.isComplete) {
+    clearFreeModeState();
+  }
+
+  // Try to load daily saved state
   const saved = loadGameState();
   if (saved) {
     return {
-      targetWord,
-      wordLength: targetWord.length,
+      mode: 'daily',
+      targetWord: dailyWord,
+      wordLength: dailyWord.length,
       dayNumber: saved.dayNumber,
-      // Use saved attempt if exists, otherwise just start with first letter
-      // Display logic shows hints at correct positions, ADD_LETTER auto-fills them
-      currentAttempt: saved.currentAttempt || targetWord[0],
+      currentAttempt: saved.currentAttempt || dailyWord[0],
       currentRow: saved.attempts.length,
       attempts: saved.attempts,
       keyStates: saved.keyStates,
@@ -58,11 +88,13 @@ function createInitialState(): GameState {
     };
   }
 
+  // Fresh daily game
   return {
-    targetWord,
-    wordLength: targetWord.length,
+    mode: 'daily',
+    targetWord: dailyWord,
+    wordLength: dailyWord.length,
     dayNumber,
-    currentAttempt: targetWord[0], // Start with first letter
+    currentAttempt: dailyWord[0],
     currentRow: 0,
     attempts: [],
     keyStates: {},
@@ -72,104 +104,30 @@ function createInitialState(): GameState {
   };
 }
 
-function getHintPositions(attempts: Attempt[]): Set<number> {
-  const hintPositions = new Set<number>();
-  // First letter is always a hint
-  hintPositions.add(0);
-
-  // Add positions from correctly guessed letters
-  for (const attempt of attempts) {
-    if (!attempt.isComplete) continue;
-    attempt.letters.forEach((letter, index) => {
-      if (letter.status === 'correct') {
-        hintPositions.add(index);
-      }
-    });
-  }
-
-  return hintPositions;
-}
-
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'ADD_LETTER': {
-      // Don't add if game is complete
       if (state.isComplete) return state;
-
-      // Don't add if current attempt is already full
       if (state.currentAttempt.length >= state.wordLength) return state;
 
       const letter = action.payload.toUpperCase();
-
-      // Check if it's a valid letter
       if (!/^[A-Z]$/.test(letter)) return state;
 
-      // Get hint positions to skip
-      const hintPositions = getHintPositions(state.attempts);
-      const currentPos = state.currentAttempt.length;
-
-      // Build the new attempt string, filling in hints as needed
-      let newAttempt = state.currentAttempt;
-
-      // If current position is a hint, we need to add the hint letter first
-      if (hintPositions.has(currentPos) && currentPos > 0) {
-        newAttempt += state.targetWord[currentPos];
-      }
-
-      // Now add the typed letter at the next non-hint position
-      let insertPos = newAttempt.length;
-      while (hintPositions.has(insertPos) && insertPos < state.wordLength) {
-        newAttempt += state.targetWord[insertPos];
-        insertPos++;
-      }
-
-      // If we've filled all positions with hints, don't add more
-      if (newAttempt.length >= state.wordLength) {
-        return state;
-      }
-
-      newAttempt += letter;
-
-      // After adding the letter, auto-fill any following hint positions
-      while (
-        hintPositions.has(newAttempt.length) &&
-        newAttempt.length < state.wordLength
-      ) {
-        newAttempt += state.targetWord[newAttempt.length];
-      }
-
+      // Simply append the letter
       return {
         ...state,
-        currentAttempt: newAttempt,
+        currentAttempt: state.currentAttempt + letter,
         errorMessage: null,
       };
     }
 
     case 'REMOVE_LETTER': {
-      // Don't remove if game is complete
       if (state.isComplete) return state;
-
-      // Don't remove the first letter (always revealed)
-      if (state.currentAttempt.length <= 1) return state;
-
-      const hintPositions = getHintPositions(state.attempts);
-
-      // Remove letters from the end, skipping over hint positions
-      let newAttempt = state.currentAttempt;
-      while (newAttempt.length > 1) {
-        const lastPos = newAttempt.length - 1;
-        if (!hintPositions.has(lastPos)) {
-          // Remove this non-hint letter
-          newAttempt = newAttempt.slice(0, -1);
-          break;
-        }
-        // Skip hint positions
-        newAttempt = newAttempt.slice(0, -1);
-      }
+      if (state.currentAttempt.length <= 1) return state; // Keep first letter
 
       return {
         ...state,
-        currentAttempt: newAttempt,
+        currentAttempt: state.currentAttempt.slice(0, -1),
         errorMessage: null,
       };
     }
@@ -196,7 +154,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
-      // Check if word is valid
+      // Check if word is valid (uses Grammalecte dictionary, same as SUTOM)
       if (!isValidWord(guess)) {
         return {
           ...state,
@@ -219,7 +177,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const gameOver = won || newAttempts.length >= MAX_ATTEMPTS;
 
       // Start next row with just the first letter
-      // Hints will be shown by display logic and auto-filled by ADD_LETTER
       return {
         ...state,
         attempts: newAttempts,
@@ -237,10 +194,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const targetWord = getDailyWord();
 
       return {
+        mode: 'daily',
         targetWord,
         wordLength: targetWord.length,
         dayNumber: loaded.dayNumber,
-        // Use saved attempt if exists, otherwise just start with first letter
         currentAttempt: loaded.currentAttempt || targetWord[0],
         currentRow: loaded.attempts.length,
         attempts: loaded.attempts,
@@ -254,6 +211,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'CLEAR_ERROR': {
       return {
         ...state,
+        errorMessage: null,
+      };
+    }
+
+    case 'START_FREE_MODE': {
+      const newWord = getRandomWord();
+      return {
+        mode: 'free',
+        targetWord: newWord,
+        wordLength: newWord.length,
+        dayNumber: state.dayNumber,
+        currentAttempt: newWord[0],
+        currentRow: 0,
+        attempts: [],
+        keyStates: {},
+        isComplete: false,
+        isWon: false,
         errorMessage: null,
       };
     }
@@ -274,17 +248,31 @@ export function useGameState() {
       return;
     }
 
-    const toSave: PersistedState = {
-      dayNumber: state.dayNumber,
-      attempts: state.attempts,
-      keyStates: state.keyStates,
-      isComplete: state.isComplete,
-      isWon: state.isWon,
-      currentAttempt: state.currentAttempt,
-    };
-    saveGameState(toSave);
+    if (state.mode === 'daily') {
+      const toSave: PersistedState = {
+        dayNumber: state.dayNumber,
+        attempts: state.attempts,
+        keyStates: state.keyStates,
+        isComplete: state.isComplete,
+        isWon: state.isWon,
+        currentAttempt: state.currentAttempt,
+      };
+      saveGameState(toSave);
+    } else {
+      const toSave: FreeModePersistedState = {
+        targetWord: state.targetWord,
+        attempts: state.attempts,
+        keyStates: state.keyStates,
+        isComplete: state.isComplete,
+        isWon: state.isWon,
+        currentAttempt: state.currentAttempt,
+      };
+      saveFreeModeState(toSave);
+    }
   }, [
+    state.mode,
     state.dayNumber,
+    state.targetWord,
     state.attempts,
     state.keyStates,
     state.isComplete,
@@ -309,11 +297,16 @@ export function useGameState() {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
+  const startFreeMode = useCallback(() => {
+    dispatch({ type: 'START_FREE_MODE' });
+  }, []);
+
   return {
     state,
     addLetter,
     removeLetter,
     submitGuess,
     clearError,
+    startFreeMode,
   };
 }

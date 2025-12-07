@@ -1,5 +1,5 @@
 import type { Letter, LetterStatus, Attempt } from '../types/game';
-import { FRENCH_DICTIONARY } from '../data/frenchDictionary';
+import { GRAMMALECTE_DICTIONARY } from '../data/grammalecteDictionary';
 
 /**
  * Evaluates a guess against the target word following Motus rules.
@@ -43,10 +43,10 @@ export function evaluateGuess(guess: string, target: string): Letter[] {
 }
 
 /**
- * Checks if a word exists in the French dictionary.
+ * Checks if a word exists in the Grammalecte dictionary (same as SUTOM).
  */
 export function isValidWord(word: string): boolean {
-  return FRENCH_DICTIONARY.has(word.toUpperCase());
+  return GRAMMALECTE_DICTIONARY.has(word.toUpperCase());
 }
 
 /**

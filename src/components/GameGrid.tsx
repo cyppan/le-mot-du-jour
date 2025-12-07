@@ -27,9 +27,9 @@ export function GameGrid({ attempts, wordLength, currentRow, currentCol, isMini,
   }
 
   return (
-    <div className="flex flex-col gap-[2px]">
+    <div className="flex flex-col gap-[1px] sm:gap-[2px]">
       {rows.map((attempt, rowIndex) => (
-        <div key={rowIndex} className="flex gap-[2px]">
+        <div key={rowIndex} className="flex gap-[1px] sm:gap-[2px]">
           {attempt.letters.map((letter, colIndex) => (
             <LetterCell
               key={colIndex}

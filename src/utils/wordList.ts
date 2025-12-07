@@ -1,3 +1,5 @@
+import { GRAMMALECTE_DICTIONARY } from '../data/grammalecteDictionary';
+
 /**
  * Curated list of 100 French words for Tusmo daily game
  * Words are common French nouns, 6-10 letters, no accents
@@ -135,4 +137,18 @@ export function getDailyWordNumber(date: Date = new Date()): number {
   const diffTime = date.getTime() - REFERENCE_DATE.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   return Math.abs(diffDays) + 1;
+}
+
+// Cache the dictionary array for random word selection
+let grammalecteArray: string[] | null = null;
+
+/**
+ * Get a random word from the Grammalecte dictionary for free mode
+ * Uses same dictionary as SUTOM (https://sutom.nocle.fr)
+ */
+export function getRandomWord(): string {
+  if (!grammalecteArray) {
+    grammalecteArray = Array.from(GRAMMALECTE_DICTIONARY);
+  }
+  return grammalecteArray[Math.floor(Math.random() * grammalecteArray.length)];
 }
