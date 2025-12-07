@@ -37,6 +37,7 @@ export function GameGrid({ attempts, wordLength, currentRow, currentCol, isMini,
               status={letter.status}
               isCurrentCell={rowIndex === currentRow && colIndex === currentCol}
               isMini={isMini}
+              wordLength={wordLength}
             />
           ))}
         </div>
