@@ -79,6 +79,16 @@ function App() {
       <Header />
 
       <main className="flex-1 flex flex-col items-center justify-start px-2 sm:px-4 py-2 sm:py-4 gap-4 sm:gap-6 md:gap-8">
+        <div className="text-white/60 text-sm capitalize">
+          {state.mode === 'daily'
+            ? new Date().toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })
+            : 'Mode libre'}
+        </div>
         <GameBoard
           round={round}
           currentRow={state.currentRow}
