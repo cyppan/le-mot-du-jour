@@ -1,4 +1,4 @@
-import { GRAMMALECTE_DICTIONARY } from '../data/grammalecteDictionary';
+import { MOTUS_DICTIONARY } from '../data/motusDictionary';
 
 /**
  * Curated list of 100 French words for Tusmo daily game
@@ -140,15 +140,15 @@ export function getDailyWordNumber(date: Date = new Date()): number {
 }
 
 // Cache the dictionary array for random word selection
-let grammalecteArray: string[] | null = null;
+let motusArray: string[] | null = null;
 
 /**
- * Get a random word from the Grammalecte dictionary for free mode
- * Uses same dictionary as SUTOM (https://sutom.nocle.fr)
+ * Get a random word from the Motus dictionary for free mode
+ * Uses filtered Lexique383 (no conjugated verbs, original Motus rules)
  */
 export function getRandomWord(): string {
-  if (!grammalecteArray) {
-    grammalecteArray = Array.from(GRAMMALECTE_DICTIONARY);
+  if (!motusArray) {
+    motusArray = Array.from(MOTUS_DICTIONARY);
   }
-  return grammalecteArray[Math.floor(Math.random() * grammalecteArray.length)];
+  return motusArray[Math.floor(Math.random() * motusArray.length)];
 }

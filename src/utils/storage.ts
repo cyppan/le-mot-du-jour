@@ -3,6 +3,13 @@ import { getDailyWordNumber } from './wordList';
 
 const DAILY_STORAGE_KEY = 'tusmo_game_state';
 const FREE_STORAGE_KEY = 'tusmo_free_mode_state';
+const STREAK_STORAGE_KEY = 'tusmo_streak';
+
+export interface StreakData {
+  currentStreak: number;
+  maxStreak: number;
+  lastWonDay: number;
+}
 
 export interface PersistedState {
   dayNumber: number;
@@ -103,4 +110,74 @@ export function clearFreeModeState(): void {
   } catch (error) {
     console.error('Failed to clear free mode state:', error);
   }
+}
+
+const DEFAULT_STREAK: StreakData = {
+  currentStreak: 0,
+  maxStreak: 0,
+  lastWonDay: 0,
+};
+
+/**
+ * Load streak data from localStorage
+ */
+export function loadStreakData(): StreakData {
+  try {
+    const data = localStorage.getItem(STREAK_STORAGE_KEY);
+    if (!data) return DEFAULT_STREAK;
+    return JSON.parse(data) as StreakData;
+  } catch (error) {
+    console.error('Failed to load streak data:', error);
+    return DEFAULT_STREAK;
+  }
+}
+
+/**
+ * Save streak data to localStorage
+ */
+export function saveStreakData(data: StreakData): void {
+  try {
+    localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error('Failed to save streak data:', error);
+  }
+}
+
+/**
+ * Update streak after a daily game completion
+ * Returns the updated streak data
+ */
+export function updateStreak(dayNumber: number, isWon: boolean): StreakData {
+  const current = loadStreakData();
+
+  // If lost, reset current streak
+  if (!isWon) {
+    const updated = { ...current, currentStreak: 0 };
+    saveStreakData(updated);
+    return updated;
+  }
+
+  // Already counted this day
+  if (current.lastWonDay === dayNumber) {
+    return current;
+  }
+
+  let newStreak: number;
+
+  // Consecutive day win
+  if (current.lastWonDay === dayNumber - 1) {
+    newStreak = current.currentStreak + 1;
+  } else {
+    // Missed day(s), start new streak
+    newStreak = 1;
+  }
+
+  const updated: StreakData = {
+    currentStreak: newStreak,
+    maxStreak: Math.max(current.maxStreak, newStreak),
+    lastWonDay: dayNumber,
+  };
+
+  saveStreakData(updated);
+  return updated;
 }

@@ -1,17 +1,34 @@
+import { useEffect } from 'react';
 import './App.css';
 import { Header } from './components/Header';
 import { GameBoard } from './components/GameBoard';
 import { Keyboard } from './components/Keyboard';
 import { GameResult } from './components/GameResult';
 import { ErrorToast } from './components/ErrorToast';
-import { useGameState } from './hooks/useGameState';
+import { ModeSwitcher } from './components/ModeSwitcher';
+import { useGameState, type GameMode } from './hooks/useGameState';
 import { useKeyboardInput } from './hooks/useKeyboardInput';
 import { generateHintsRow } from './utils/gameLogic';
 import { MAX_ATTEMPTS } from './utils/constants';
 import type { Round, Attempt, Letter } from './types/game';
 
 function App() {
-  const { state, addLetter, removeLetter, submitGuess, clearError, startFreeMode } = useGameState();
+  const { state, addLetter, removeLetter, submitGuess, clearError, startFreeMode, switchMode } = useGameState();
+
+  // Sync URL with mode on mode change
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const currentUrlMode = url.searchParams.get('mode');
+    if (currentUrlMode !== state.mode) {
+      url.searchParams.set('mode', state.mode);
+      window.history.replaceState({}, '', url);
+    }
+  }, [state.mode]);
+
+  // Handle mode change from UI
+  const handleModeChange = (newMode: GameMode) => {
+    switchMode(newMode);
+  };
 
   // Handle physical keyboard input
   useKeyboardInput({
@@ -76,19 +93,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-tusmo-bg flex flex-col">
-      <Header />
+      <Header streak={state.streak.currentStreak} />
 
       <main className="flex-1 flex flex-col items-center justify-start px-2 sm:px-4 py-2 sm:py-4 gap-4 sm:gap-6 md:gap-8">
-        <div className="text-white/60 text-sm capitalize">
-          {state.mode === 'daily'
-            ? new Date().toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })
-            : 'Mode libre'}
-        </div>
+        <ModeSwitcher mode={state.mode} onModeChange={handleModeChange} />
         <GameBoard
           round={round}
           currentRow={state.currentRow}
@@ -116,6 +124,8 @@ function App() {
           word={state.targetWord}
           attemptCount={state.attempts.length}
           mode={state.mode}
+          streak={state.streak.currentStreak}
+          maxStreak={state.streak.maxStreak}
           onStartFreeMode={startFreeMode}
         />
       )}

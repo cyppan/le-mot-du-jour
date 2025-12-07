@@ -22,7 +22,7 @@ src/
 │   ├── GameResult.tsx       # Win/lose modal with free mode button
 │   └── ErrorToast.tsx       # Error message display
 ├── data/
-│   └── grammalecteDictionary.ts # Grammalecte dictionary (215K words, same as SUTOM)
+│   └── motusDictionary.ts       # Motus dictionary (53K words, filtered from Lexique383)
 ├── hooks/
 │   ├── useGameState.ts      # Core game state management (useReducer)
 │   └── useKeyboardInput.ts  # Physical keyboard event handling
@@ -46,10 +46,10 @@ src/
 - State persists until midnight, then resets
 
 ### Free Mode
-- Unlimited games with random words from Grammalecte dictionary (215K words)
-- Uses same dictionary as SUTOM (https://sutom.nocle.fr)
+- Unlimited games with random words from Motus dictionary (53K words)
+- Uses filtered Lexique383 following original Motus France 2 rules
 - Accessible via "Mode libre" button after completing daily game
-- Includes verbs, conjugations, plurals, etc.
+- Includes nouns, adjectives, adverbs, infinitives, and participles (no conjugated verbs)
 - State persists across refreshes (active games only)
 - Refresh returns to daily mode if free game was completed
 
@@ -129,14 +129,25 @@ Defined in `src/index.css` under `@theme`:
 - **Pre-shuffled** for variety in daily word lengths
 - Words cycle through the list starting from January 1, 2024. After 100 days, the list repeats.
 
-### Word Validation - Grammalecte Dictionary (`src/data/grammalecteDictionary.ts`)
-- **215,315 words** from Grammalecte (same as SUTOM)
-- Source: https://github.com/Gyrfalc0n/SUTOM-Archive
+### Word Validation & Free Mode - Motus Dictionary (`src/data/motusDictionary.ts`)
+- **53,611 words** filtered from Lexique 3.83 (http://www.lexique.org)
+- Follows **original Motus France 2 rules** (not SUTOM which allows conjugations)
 - Used for ALL word validation (both daily and free modes)
-- Includes conjugated verbs, plurals, technical terms
+- **Allowed**: Nouns, adjectives, adverbs, verb infinitives, past/present participles
+- **Excluded**: Conjugated verb forms (e.g., MANGEAIT, MANGEONS)
 - Word lengths: 6-10 letters only
 - Accents removed to match game display
 - All 100 curated daily words are present in this dictionary
+
+| Length | Count |
+|--------|-------|
+| 6 letters | 7,605 |
+| 7 letters | 10,895 |
+| 8 letters | 12,710 |
+| 9 letters | 12,247 |
+| 10 letters | 10,154 |
+
+**Regenerate dictionary**: `npx tsx scripts/generateMotusDictionary.ts`
 
 ### Helper Functions
 ```typescript
@@ -144,7 +155,7 @@ import { getDailyWord, getDailyWordNumber, getRandomWord } from './utils/wordLis
 
 getDailyWord();       // Returns today's word, e.g., "FAMILLE"
 getDailyWordNumber(); // Returns day number since Jan 1, 2024
-getRandomWord();      // Returns random word from Grammalecte dictionary (for free mode)
+getRandomWord();      // Returns random word from Motus dictionary (for free mode)
 ```
 
 ## Architecture

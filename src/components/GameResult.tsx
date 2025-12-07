@@ -6,6 +6,8 @@ interface GameResultProps {
   word: string;
   attemptCount: number;
   mode: GameMode;
+  streak: number;
+  maxStreak: number;
   onStartFreeMode: () => void;
 }
 
@@ -14,6 +16,8 @@ export function GameResult({
   word,
   attemptCount,
   mode,
+  streak,
+  maxStreak,
   onStartFreeMode,
 }: GameResultProps) {
   const [isClosing, setIsClosing] = useState(false);
@@ -52,6 +56,18 @@ export function GameResult({
               <span className="font-bold">{attemptCount}</span> essai
               {attemptCount > 1 ? "s" : ""} !
             </p>
+            {mode === 'daily' && streak > 0 && (
+              <div className="bg-white/5 rounded-lg p-3 mb-2">
+                <p className="text-tusmo-present font-bold text-lg">
+                  🔥 {streak} jour{streak > 1 ? 's' : ''} de suite !
+                </p>
+                {maxStreak > streak && (
+                  <p className="text-white/50 text-xs mt-1">
+                    Record : {maxStreak} jour{maxStreak > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <>

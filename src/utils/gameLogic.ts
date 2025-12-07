@@ -1,5 +1,5 @@
 import type { Letter, LetterStatus, Attempt } from '../types/game';
-import { GRAMMALECTE_DICTIONARY } from '../data/grammalecteDictionary';
+import { MOTUS_DICTIONARY } from '../data/motusDictionary';
 
 /**
  * Evaluates a guess against the target word following Motus rules.
@@ -43,10 +43,11 @@ export function evaluateGuess(guess: string, target: string): Letter[] {
 }
 
 /**
- * Checks if a word exists in the Grammalecte dictionary (same as SUTOM).
+ * Checks if a word exists in the Motus dictionary.
+ * Uses filtered Lexique383 (no conjugated verbs, only infinitives/participles).
  */
 export function isValidWord(word: string): boolean {
-  return GRAMMALECTE_DICTIONARY.has(word.toUpperCase());
+  return MOTUS_DICTIONARY.has(word.toUpperCase());
 }
 
 /**

@@ -14,9 +14,11 @@ import {
   loadGameState,
   saveFreeModeState,
   loadFreeModeState,
-  clearFreeModeState,
+  loadStreakData,
+  updateStreak,
   type PersistedState,
   type FreeModePersistedState,
+  type StreakData,
 } from '../utils/storage';
 
 export type GameMode = 'daily' | 'free';
@@ -33,6 +35,7 @@ export interface GameState {
   isComplete: boolean;
   isWon: boolean;
   errorMessage: string | null;
+  streak: StreakData;
 }
 
 type GameAction =
@@ -41,35 +44,62 @@ type GameAction =
   | { type: 'SUBMIT_GUESS' }
   | { type: 'LOAD_STATE'; payload: PersistedState }
   | { type: 'CLEAR_ERROR' }
-  | { type: 'START_FREE_MODE' };
+  | { type: 'START_FREE_MODE' }
+  | { type: 'SWITCH_MODE'; payload: { mode: GameMode } }
+  | { type: 'UPDATE_STREAK'; payload: StreakData };
+
+function getUrlMode(): GameMode | null {
+  if (typeof window === 'undefined') return null;
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get('mode');
+  if (mode === 'free' || mode === 'daily') return mode;
+  return null;
+}
 
 function createInitialState(): GameState {
   const dailyWord = getDailyWord();
   const dayNumber = getDailyWordNumber();
+  const urlMode = getUrlMode();
+  const streak = loadStreakData();
 
-  // Check for active (not complete) free mode game first
-  const freeModeSaved = loadFreeModeState();
-  if (freeModeSaved && !freeModeSaved.isComplete) {
+  // If URL specifies free mode, try to load/start free mode
+  if (urlMode === 'free') {
+    const freeModeSaved = loadFreeModeState();
+    if (freeModeSaved && !freeModeSaved.isComplete) {
+      return {
+        mode: 'free',
+        targetWord: freeModeSaved.targetWord,
+        wordLength: freeModeSaved.targetWord.length,
+        dayNumber,
+        currentAttempt: freeModeSaved.currentAttempt || freeModeSaved.targetWord[0],
+        currentRow: freeModeSaved.attempts.length,
+        attempts: freeModeSaved.attempts,
+        keyStates: freeModeSaved.keyStates,
+        isComplete: freeModeSaved.isComplete,
+        isWon: freeModeSaved.isWon,
+        errorMessage: null,
+        streak,
+      };
+    }
+    // Start new free mode game
+    const newWord = getRandomWord();
     return {
       mode: 'free',
-      targetWord: freeModeSaved.targetWord,
-      wordLength: freeModeSaved.targetWord.length,
+      targetWord: newWord,
+      wordLength: newWord.length,
       dayNumber,
-      currentAttempt: freeModeSaved.currentAttempt || freeModeSaved.targetWord[0],
-      currentRow: freeModeSaved.attempts.length,
-      attempts: freeModeSaved.attempts,
-      keyStates: freeModeSaved.keyStates,
-      isComplete: freeModeSaved.isComplete,
-      isWon: freeModeSaved.isWon,
+      currentAttempt: newWord[0],
+      currentRow: 0,
+      attempts: [],
+      keyStates: {},
+      isComplete: false,
+      isWon: false,
       errorMessage: null,
+      streak,
     };
   }
 
-  // Clear any completed free mode state
-  if (freeModeSaved && freeModeSaved.isComplete) {
-    clearFreeModeState();
-  }
-
+  // If URL specifies daily mode or no URL param, use daily mode
   // Try to load daily saved state
   const saved = loadGameState();
   if (saved) {
@@ -85,6 +115,7 @@ function createInitialState(): GameState {
       isComplete: saved.isComplete,
       isWon: saved.isWon,
       errorMessage: null,
+      streak,
     };
   }
 
@@ -101,6 +132,7 @@ function createInitialState(): GameState {
     isComplete: false,
     isWon: false,
     errorMessage: null,
+    streak,
   };
 }
 
@@ -205,6 +237,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         isComplete: loaded.isComplete,
         isWon: loaded.isWon,
         errorMessage: null,
+        streak: state.streak,
       };
     }
 
@@ -229,6 +262,95 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         isComplete: false,
         isWon: false,
         errorMessage: null,
+        streak: state.streak,
+      };
+    }
+
+    case 'SWITCH_MODE': {
+      const targetMode = action.payload.mode;
+
+      // Already in this mode, no-op
+      if (targetMode === state.mode) return state;
+
+      if (targetMode === 'free') {
+        // Switch to free mode: load saved free state or start new
+        const freeModeSaved = loadFreeModeState();
+        if (freeModeSaved && !freeModeSaved.isComplete) {
+          return {
+            mode: 'free',
+            targetWord: freeModeSaved.targetWord,
+            wordLength: freeModeSaved.targetWord.length,
+            dayNumber: state.dayNumber,
+            currentAttempt: freeModeSaved.currentAttempt || freeModeSaved.targetWord[0],
+            currentRow: freeModeSaved.attempts.length,
+            attempts: freeModeSaved.attempts,
+            keyStates: freeModeSaved.keyStates,
+            isComplete: freeModeSaved.isComplete,
+            isWon: freeModeSaved.isWon,
+            errorMessage: null,
+            streak: state.streak,
+          };
+        }
+        // Start new free mode game
+        const newWord = getRandomWord();
+        return {
+          mode: 'free',
+          targetWord: newWord,
+          wordLength: newWord.length,
+          dayNumber: state.dayNumber,
+          currentAttempt: newWord[0],
+          currentRow: 0,
+          attempts: [],
+          keyStates: {},
+          isComplete: false,
+          isWon: false,
+          errorMessage: null,
+          streak: state.streak,
+        };
+      } else {
+        // Switch to daily mode: load saved daily state or start fresh
+        const dailyWord = getDailyWord();
+        const dayNumber = getDailyWordNumber();
+        const dailySaved = loadGameState();
+
+        if (dailySaved) {
+          return {
+            mode: 'daily',
+            targetWord: dailyWord,
+            wordLength: dailyWord.length,
+            dayNumber: dailySaved.dayNumber,
+            currentAttempt: dailySaved.currentAttempt || dailyWord[0],
+            currentRow: dailySaved.attempts.length,
+            attempts: dailySaved.attempts,
+            keyStates: dailySaved.keyStates,
+            isComplete: dailySaved.isComplete,
+            isWon: dailySaved.isWon,
+            errorMessage: null,
+            streak: state.streak,
+          };
+        }
+        // Fresh daily game
+        return {
+          mode: 'daily',
+          targetWord: dailyWord,
+          wordLength: dailyWord.length,
+          dayNumber,
+          currentAttempt: dailyWord[0],
+          currentRow: 0,
+          attempts: [],
+          keyStates: {},
+          isComplete: false,
+          isWon: false,
+          errorMessage: null,
+          streak: state.streak,
+        };
+      }
+    }
+
+    case 'UPDATE_STREAK': {
+      return {
+        ...state,
+        streak: action.payload,
       };
     }
 
@@ -240,6 +362,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 export function useGameState() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
   const isFirstRender = useRef(true);
+  const streakUpdatedForDay = useRef<number | null>(null);
 
   // Save state when it changes (skip first render since we just loaded)
   useEffect(() => {
@@ -280,6 +403,19 @@ export function useGameState() {
     state.currentAttempt,
   ]);
 
+  // Update streak when daily game completes
+  useEffect(() => {
+    if (
+      state.mode === 'daily' &&
+      state.isComplete &&
+      streakUpdatedForDay.current !== state.dayNumber
+    ) {
+      streakUpdatedForDay.current = state.dayNumber;
+      const newStreak = updateStreak(state.dayNumber, state.isWon);
+      dispatch({ type: 'UPDATE_STREAK', payload: newStreak });
+    }
+  }, [state.mode, state.isComplete, state.dayNumber, state.isWon]);
+
   // Action creators
   const addLetter = useCallback((letter: string) => {
     dispatch({ type: 'ADD_LETTER', payload: letter });
@@ -301,6 +437,10 @@ export function useGameState() {
     dispatch({ type: 'START_FREE_MODE' });
   }, []);
 
+  const switchMode = useCallback((mode: GameMode) => {
+    dispatch({ type: 'SWITCH_MODE', payload: { mode } });
+  }, []);
+
   return {
     state,
     addLetter,
@@ -308,5 +448,6 @@ export function useGameState() {
     submitGuess,
     clearError,
     startFreeMode,
+    switchMode,
   };
 }
